@@ -3,11 +3,13 @@
 
 import requests
 import json
+import math
 import csv
 import ast
 import os
 import sys
 from dotenv import load_dotenv
+import sqlite3
 from datetime import date
 load_dotenv()
 
@@ -26,7 +28,17 @@ URL = (
 # ============================================================
 # FUNCTION 2: Send data to Gemini and get structured JSON back
 # ============================================================
+DB_FILE="cards.db"
 
+def run(sql):
+   
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        for row in rows:
+            print(row)
+        print(f"({len(rows)} rows)\n")
 
 
 def generate_guide(material: str):
