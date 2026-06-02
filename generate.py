@@ -1,6 +1,3 @@
-
-
-
 import requests
 import json
 import math
@@ -13,7 +10,6 @@ import sqlite3
 from datetime import date
 load_dotenv()
 
-
 API_KEY = os.getenv("GEMINI_API_KEY")  # or whatever name you used in .env
 if not API_KEY:
     raise ValueError("API key not found in .env")
@@ -24,11 +20,34 @@ URL = (
     f"?key={API_KEY}"
 )
 
-
 # ============================================================
 # FUNCTION 2: Send data to Gemini and get structured JSON back
 # ============================================================
 DB_FILE="cards.db"
+
+def init_db():
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS decks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cards (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                deck_id INTEGER NOT NULL,
+                english TEXT NOT NULL,
+                spanish TEXT NOT NULL,
+                FOREIGN KEY(deck_id) REFERENCES decks(id)
+            );
+        """)
+
+        conn.commit()
+
 
 def run(sql):
    
@@ -44,34 +63,36 @@ def run(sql):
 def generate_guide(material: str):
     # Build the prompt as a left-aligned triple-quoted string
     prompt = f"""
-        You are converting study material into flashcards.
+You convert study material into flashcards.
 
-        Task:
-        Create a JSON array of flashcards from the input data.
+Your task:
+Return a JSON array of flashcards.
 
-        Rules:
-        - Return only valid JSON.
-        - Do not include markdown, explanations, or extra text.
-        - Each flashcard must be an object with:
-        - "english": the English word, phrase, or question
-        - "spanish": the Spanish translation or answer
-        - If the input is a study guide, extract important terms and convert them into flashcards.
-        - If the input is a list of words, translate each word into Spanish.
-        - Keep the output concise and accurate.
+Output rules:
+- Return ONLY valid JSON.
+- Do NOT include markdown, code fences, or explanations.
+- The output must be a JSON array.
+- Each item must be an object with exactly these keys:
+  - "english": string
+  - "spanish": string
 
-        Output format example:
-        [
-        {{
-            "english": "apple",
-            "spanish": "manzana"
-        }}
-        ]
+Behavior:
+- If the input is a study guide, extract the most important terms and turn them into flashcards.
+- If the input is a list of words, translate each word into Spanish.
+- Be concise and accurate.
 
-        Input:
-        {material}
-        """.strip()
+Example output format:
+[
+  {{
+    "english": "apple",
+    "spanish": "manzana"
+  }}
+]
 
-   
+Input:
+{material}
+""".strip()
+
     body = {
         "contents": [
             {
@@ -97,16 +118,43 @@ def generate_guide(material: str):
         data = response.json()
         text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
-     
+        # In theory response_mime_type should already prevent code fences,
+        # but this keeps you safe if they appear.
         if text.startswith("```"):
             text = text.split("\n", 1)[1]
             text = text.rsplit("```", 1)[0]
+
         return json.loads(text)
 
     except Exception as e:
         print("Error generating guide:", e)
         return None
 
+
+def save_flashcards(flashcards):
+    if not flashcards:
+        print("No flashcards to save.")
+        return
+
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+
+        # Create a new deck
+        cursor.execute("INSERT INTO decks DEFAULT VALUES;")
+        deck_id = cursor.lastrowid
+
+        # Insert cards
+        for card in flashcards:
+            english = card.get("english")
+            spanish = card.get("spanish")
+            if english and spanish:
+                cursor.execute(
+                    "INSERT INTO cards (deck_id, english, spanish) VALUES (?, ?, ?);",
+                    (deck_id, english, spanish)
+                )
+
+        conn.commit()
+        print(f"Saved {len(flashcards)} flashcards into deck {deck_id}.")
 
 # ============================================================
 # FUNCTION 3: Display one result to the user
@@ -121,21 +169,18 @@ def generate_guide(material: str):
 
 def main():
     """Main menu loop for the app."""
-    # Print app title
+    init_db()  # make sure tables exist
 
-   
-    #   1. Process new item (get input → send to Gemini → display → add to collected)
-    #   2. View all collected results
-    #   3. Save & Quit
-    with open ("words.in","r") as f:
-        words=f.readlines()
-        words=" ".join(words)
-        
-    flashcards=generate_guide(words)
-        
-    
+    with open("words.in", "r") as f:
+        words = f.readlines()
+        words = " ".join(words)
 
-    pass
+    flashcards = generate_guide(words)
+
+    if flashcards is not None:
+        save_flashcards(flashcards)
+    else:
+        print("Failed to generate flashcards.")
 
 
 main()
