@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flashcard App</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --surface: #020617;
+      --card: #020617;
+      --accent: #3b82f6;
+      --accent-soft: #0f172a;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1d4ed8 0, #020617 45%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 960px;
+      min-height: 80vh;
+      background: linear-gradient(to bottom right, #020617cc, #020617f2);
+      border-radius: 24px;
+      padding: 20px 22px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    header .tagline {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+
+    #home-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+    }
+
+    .prompt-card {
+      width: 100%;
+      max-width: 640px;
+      background: var(--card);
+      border-radius: 18px;
+      border: 1px solid #1f2937;
+      padding: 18px 18px 10px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .prompt-title {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .prompt-input {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      background: #020617;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .prompt-input::placeholder {
+      color: #6b7280;
+    }
+
+    textarea.prompt-input {
+      border-radius: 12px;
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .home-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: var(--text-main);
+    }
+
+    button.secondary {
+      background: #0f172a;
+      color: var(--text-main);
+      border: 1px solid #1f2937;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #f9fafb;
+    }
+
+    .status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+
+    #review-view {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .deck-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .deck-row select {
+      flex: 1;
+      max-width: 220px;
+      padding: 6px 14px;
+      border-radius: 999px;         
+      border: 1px solid #1f2937;
+      background: #0f172a;          
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+      appearance: none;           
+      -webkit-appearance: none;
+    }
+
+    .card-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-container {
+      width: 700px;
+      height: 400px;
+      perspective: 800px;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.4s;
+      border-radius: 12px;
+      background: #020617;
+      color: #f9fafb;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      border: 1px solid #1e293b;
+    }
+
+    .card.is-flipped {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .card-front {
+      background: #020617;
+    }
+
+    .card-back {
+      background: #020617;
+      transform: rotateY(180deg);
+    }
+
+    .card-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .card-text {
+      font-size: 1.4rem;
+      font-weight: 600;
+      word-wrap: break-word;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .feedback {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      min-height: 1.2em;
+      text-align: center;
+    }
+
+    .feedback.correct {
+      color: #4ade80;
+    }
+
+    .feedback.incorrect {
+      color: #fca5a5;
+    }
+
+    .hint-row {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .app-shell {
+        padding: 16px 16px;
+      }
+      .prompt-card {
+        padding: 14px;
+      }
+      .card-container {
+        width: 100%;
+        max-width: 280px;
+        height: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div>
+        <h1>Flashcard Trainer</h1>
+        <div class="tagline">Generate decks with AI, then drill them.</div>
+      </div>
+    </header>
+
+    <main>
+      <section id="home-view">
+        <div class="prompt-card">
+          <div class="prompt-title">Deck name</div>
+          <input
+            id="deck-name"
+            type="text"
+            class="prompt-input"
+            placeholder="Name"
+          >
+
+          <div class="prompt-title">Paste your word list or study notes (optional)</div>
+          <textarea
+            id="material"
+            class="prompt-input"
+            rows="3"
+            placeholder="Input decks"
+          ></textarea>
+
+          <div class="home-buttons">
+            <button id="skip-ai-btn" class="secondary">Skip AI & go to decks</button>
+            <button id="create-deck-btn" class="primary">Create deck with AI</button>
+          </div>
+          <div id="create-deck-status" class="status"></div>
+        </div>
+
+        <div class="hint">
+          Your decks are saved locally in a SQLite database.
+        </div>
+      </section>
+      <section id="review-view">
+        <div class="top-row">
+          <div class="deck-row">
+            <button id="refresh-decks-btn" class="secondary">Refresh decks</button>
+            <select id="deck-select">
+              <option value="">-- Select a deck --</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-wrapper">
+          <div class="card-container">
+            <div class="card" id="flashcard">
+              <div class="card-face card-front">
+                <div class="card-label">Front · English</div>
+                <div class="card-text" id="front-text">Select a deck and load a card</div>
+              </div>
+              <div class="card-face card-back">
+                <div class="card-label">Back · Spanish</div>
+                <div class="card-text" id="back-text">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="controls-row">
+            <button id="show-back-btn" class="secondary">Show back</button>
+            <button id="mark-correct-btn" class="primary">Mark correct</button>
+            <button id="mark-wrong-btn" class="danger">Mark wrong</button>
+            <button id="next-card-btn" class="secondary">Next card</button>
+          </div>
+
+          <div class="feedback" id="feedback"></div>
+          <div class="hint-row">
+            Click card or press Space to flip. Right/Left arrows mark correct/wrong.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    let currentDeckId = null;
+    let currentCardId = null;
+    let currentBackText = "";
+
+    const flashcard = document.getElementById("flashcard");
+    const homeView = document.getElementById("home-view");
+    const reviewView = document.getElementById("review-view");
+
+
+    function showHome() {
+      homeView.style.display = "flex";
+      reviewView.style.display = "none";
+    }
+
+    function showReview() {
+      homeView.style.display = "none";
+      reviewView.style.display = "flex";
+    }
+
+
+    async function fetchDecks() {
+      try {
+        const res = await fetch("/api/decks");
+        const decks = await res.json();
+        const select = document.getElementById("deck-select");
+        select.innerHTML = '<option value="">-- Select a deck --</option>';
+        decks.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d.id;
+          opt.textContent = d.name;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function createDeck() {
+      const name = document.getElementById("deck-name").value.trim();
+      const material = document.getElementById("material").value.trim();
+      const statusEl = document.getElementById("create-deck-status");
+
+      if (!name || !material) {
+        statusEl.textContent = "Deck name and material are required.";
+        return;
+      }
+
+      statusEl.textContent = "Creating deck...";
+      try {
+        const res = await fetch("/api/decks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, material })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          statusEl.textContent = data.error || "Error creating deck.";
+        } else {
+          statusEl.textContent = `Created deck with ${data.count} cards.`;
+          await fetchDecks();
+          showReview();
+        }
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Network error.";
+      }
+    }
+
+    async function skipAI() {
+      await fetchDecks();
+      showReview();
+    }
+
+
+    async function loadNextCard() {
+      if (!currentDeckId) {
+        setFeedback("Please select a deck first.", "", "");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/next_card?deck_id=${encodeURIComponent(currentDeckId)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          setCardTexts("No card loaded", "—");
+          currentCardId = null;
+          setFeedback(data.error || "Error loading card.", "", "");
+          return;
+        }
+
+        currentCardId = data.id;
+        currentBackText = data.back;
+        setCardTexts(data.front, data.back);
+        flashcard.classList.remove("is-flipped");
+        setFeedback("", "", "");
+      } catch (err) {
+        console.error(err);
+        setFeedback("Network error.", "", "");
+      }
+    }
+
+
+    async function markCard(correct) {
+      if (!currentDeckId || !currentCardId) {
+        setFeedback("No card loaded.", "", "");
+        return;
+      }
+
+      const payload = {
+        deck_id: currentDeckId,
+        card_id: currentCardId,
+        answer: correct ? (currentBackText || "") : "__WRONG__SENTINEL__"
+      };
+
+      try {
+        const res = await fetch("/api/check_answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          setFeedback(data.error || "Error marking card.", "", "");
+          return;
+        }
+
+        currentBackText = data.correct_answer;
+        document.getElementById("back-text").textContent = data.correct_answer;
+
+        if (correct) {
+          setFeedback("Marked as correct.", "correct", "");
+        } else {
+          setFeedback(`Marked as wrong. Correct answer: ${data.correct_answer}`, "incorrect", "");
+        }
+
+        setTimeout(() => {
+          loadNextCard();
+        }, 200);
+      } catch (err) {
+        console.error(err);
+        setFeedback("Network error.", "", "");
+      }
+    }
+
+
+    function setCardTexts(front, back) {
+      document.getElementById("front-text").textContent = front;
+      document.getElementById("back-text").textContent = back;
+    }
+
+    function setFeedback(msg, statusClass, extraClass) {
+      const fb = document.getElementById("feedback");
+      fb.textContent = msg;
+      fb.className = "feedback";
+      if (statusClass) fb.classList.add(statusClass);
+      if (extraClass) fb.classList.add(extraClass);
+    }
+
+    function flipCard() {
+      if (!currentCardId) return;
+      flashcard.classList.toggle("is-flipped");
+    }
+
+    function showBack() {
+      if (!currentCardId) return;
+      flashcard.classList.add("is-flipped");
+    }
+
+
+    document.getElementById("create-deck-btn").addEventListener("click", createDeck);
+    document.getElementById("skip-ai-btn").addEventListener("click", skipAI);
+    document.getElementById("refresh-decks-btn").addEventListener("click", fetchDecks);
+    document.getElementById("next-card-btn").addEventListener("click", loadNextCard);
+    document.getElementById("mark-correct-btn").addEventListener("click", () => markCard(true));
+    document.getElementById("mark-wrong-btn").addEventListener("click", () => markCard(false));
+    document.getElementById("show-back-btn").addEventListener("click", showBack);
+
+    document.getElementById("deck-select").addEventListener("change", (e) => {
+      currentDeckId = e.target.value || null;
+      currentCardId = null;
+      setCardTexts("Select a deck and load a card", "—");
+      flashcard.classList.remove("is-flipped");
+      setFeedback("", "", "");
+    });
+
+    flashcard.addEventListener("click", flipCard);
+
+    document.addEventListener("keydown", (e) => {
+      const activeTag = document.activeElement.tagName.toLowerCase();
+      const inText = activeTag === "textarea" || activeTag === "input";
+
+      if (e.key === " " && !inText) {
+        e.preventDefault();
+        flipCard();
+      } else if (e.key === "ArrowRight" && !inText) {
+        e.preventDefault();
+        markCard(true);
+      } else if (e.key === "ArrowLeft" && !inText) {
+        e.preventDefault();
+        markCard(false);
+      }
+    });
+
+    showHome();
+  </script>
+</body>
+</html>
