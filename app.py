@@ -41,8 +41,8 @@ def init_db():
             CREATE TABLE IF NOT EXISTS cards (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 deck_id INTEGER NOT NULL,
-                english TEXT NOT NULL,
-                spanish TEXT NOT NULL,
+                front TEXT NOT NULL,
+                back TEXT NOT NULL,
                 interval REAL NOT NULL,
                 ease REAL NOT NULL,
                 next_due REAL NOT NULL,
@@ -84,18 +84,18 @@ def load_deck(deck_id):
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, english, spanish, interval, ease, next_due
+            SELECT id, front, back, interval, ease, next_due
             FROM cards
             WHERE deck_id = ?;
         """, (deck_id,))
         rows = cursor.fetchall()
 
     cards = []
-    for cid, english, spanish, interval, ease, next_due in rows:
+    for cid, front, back, interval, ease, next_due in rows:
         cards.append(Card(
             id=cid,
-            front=english,
-            back=spanish,
+            front=front,
+            back=back,
             interval=float(interval),
             ease=float(ease),
             next_due=float(next_due),
@@ -125,19 +125,19 @@ Output rules:
 - Do NOT include markdown, code fences, or explanations.
 - The output must be a JSON array.
 - Each item must be an object with exactly these keys:
-  - "english": string
-  - "spanish": string
+  - "front": string
+  - "back": string
 
 Behavior:
 - If the input is a study guide, extract the most important terms and turn them into flashcards.
-- If the input is a list of words, translate each word into Spanish.
+- If the input is a list of words, the user will tell you what they want on the back
 - Be concise and accurate.
 
 Example output format:
 [
   {{
-    "english": "apple",
-    "spanish": "manzana"
+    "front": "apple",
+    "back": "manzana"
   }}
 ]
 
@@ -187,13 +187,13 @@ def save_flashcards(flashcards, deck_name):
         deck_id = cursor.fetchone()[0]
 
         for card in flashcards:
-            english = card.get("english")
-            spanish = card.get("spanish")
-            if english and spanish:
+            front = card.get("front")
+            back = card.get("back")
+            if front and back:
                 cursor.execute(
-                    "INSERT INTO cards (deck_id, english, spanish, interval, ease, next_due) "
+                    "INSERT INTO cards (deck_id, front, back, interval, ease, next_due) "
                     "VALUES (?, ?, ?, ?, ?, ?);",
-                    (deck_id, english, spanish, 1.0, 2.5, time())
+                    (deck_id, front, back, 1.0, 2.5, time())
                 )
 
         conn.commit()
@@ -262,7 +262,7 @@ def check_answer():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, english, spanish, interval, ease, next_due
+            SELECT id, front, back, interval, ease, next_due
             FROM cards
             WHERE id = ? AND deck_id = ?;
         """, (card_id, deck_id))
